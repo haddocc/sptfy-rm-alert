@@ -9,6 +9,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\String\UnicodeString;
 
 // the name of the command is what users type after "php bin/console"
 #[AsCommand(name: 'app:authorize-user', description: 'Authorizes a new user.', aliases: ['app:auth'])]
@@ -18,6 +19,7 @@ class AuthorizeUserCommand extends Command
     {
         parent::__construct($name);
     }
+
     protected function configure(): void
     {
         $this
@@ -33,21 +35,34 @@ class AuthorizeUserCommand extends Command
 
         $helper = $this->getHelper('question');
 
-        $emailQuestion = new Question('Please provide a unique identifier to store the access token to your Spotify account: ', false);
+        $identifierQuestion = new Question('Please provide a unique identifier to store the access token to your Spotify account: ', false);
 
-        $email = $helper->ask($input, $output, $emailQuestion);
+        $cacheIdentifier = $helper->ask($input, $output, $identifierQuestion);
 
-        if($email) {
-            $this->initOAuth2($output);
+        if ($cacheIdentifier) {
+            $this->initOAuth2($output, $cacheIdentifier);
         } else {
             $output->writeln('No identifier given. exiting...');
         }
         return Command::SUCCESS;
     }
 
-    protected function initOAuth2(OutputInterface $output): void
+    protected function initOAuth2(OutputInterface $output, string $cacheIdentifier): void
     {
+        // Store redirect for manipulation rather than returning immediately
         $redirectResponse = $this->clientRegistry->getClient('spotify')->redirect(['scope' => 'user-library-read']);
-        $output->writeln('Please visit ' . $redirectResponse->getTargetUrl() . ' to grant permissions to read your library of liked tracks.');
+        $targetUrl = $redirectResponse->getTargetUrl();
+
+        // Manipulate `redirect_uri` to add a cache identifier so we can reuse access token
+        $parsedUrl = parse_url($targetUrl);
+        parse_str($parsedUrl['query'], $query);
+        $query['redirect_uri'] = $query['redirect_uri'] . '?id=' . $cacheIdentifier;
+
+        // rebuild redirect url
+        $newQueryString = http_build_query($query);
+        (new UnicodeString($targetUrl))->before('?')->append('?' . $newQueryString);
+
+        $output->writeln('Please visit ' . $redirectResponse->getTargetUrl()
+            . ' to grant permissions to read your library of liked tracks.');
     }
 }
