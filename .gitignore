@@ -9,6 +9,9 @@
 /vendor/
 ###< symfony/framework-bundle ###
 /.idea
+# don't commit the private keys at all for extra safety,
+# always keep in a password vault
+/config/secrets/*/*.decrypt.private.php
 
 ###> symfony/phpunit-bridge ###
 .phpunit.result.cache
@@ -19,3 +22,5 @@
 /phpunit.xml
 .phpunit.result.cache
 ###< phpunit/phpunit ###
+
+
