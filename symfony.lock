@@ -95,5 +95,8 @@
             "config/packages/routing.yaml",
             "config/routes.yaml"
         ]
+    },
+    "theofidry/psysh-bundle": {
+        "version": "4.5.0"
     }
 }
