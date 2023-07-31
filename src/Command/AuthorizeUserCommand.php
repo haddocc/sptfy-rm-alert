@@ -3,13 +3,15 @@
 namespace App\Command;
 
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
+use Psr\Cache\InvalidArgumentException;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\String\UnicodeString;
+use Symfony\Contracts\Cache\ItemInterface;
 
 // the name of the command is what users type after "php bin/console"
 #[AsCommand(name: 'app:authorize-user', description: 'Authorizes a new user.', aliases: ['app:auth'])]
@@ -27,6 +29,9 @@ class AuthorizeUserCommand extends Command
             ->setHelp('This command allows you to authorize a user.');
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // set router context to get proper redirect uri base url for a local env
@@ -39,30 +44,28 @@ class AuthorizeUserCommand extends Command
 
         $cacheIdentifier = $helper->ask($input, $output, $identifierQuestion);
 
+        // Store the cache key identifier for 5 minutes
+        $cache = new FilesystemAdapter();
+        $cache->get('latestAccessTokenKey', function (ItemInterface $item) use ($cacheIdentifier): string {
+            $item->expiresAfter(300);
+            return $cacheIdentifier;
+        });
+
         if ($cacheIdentifier) {
-            $this->initOAuth2($output, $cacheIdentifier);
+            $this->initOAuth2($output);
         } else {
             $output->writeln('No identifier given. exiting...');
         }
         return Command::SUCCESS;
     }
 
-    protected function initOAuth2(OutputInterface $output, string $cacheIdentifier): void
+    protected function initOAuth2(OutputInterface $output): void
     {
         // Store redirect for manipulation rather than returning immediately
         $redirectResponse = $this->clientRegistry->getClient('spotify')->redirect(['scope' => 'user-library-read']);
         $targetUrl = $redirectResponse->getTargetUrl();
 
-        // Manipulate `redirect_uri` to add a cache identifier so we can reuse access token
-        $parsedUrl = parse_url($targetUrl);
-        parse_str($parsedUrl['query'], $query);
-        $query['redirect_uri'] = $query['redirect_uri'] . '?id=' . $cacheIdentifier;
-
-        // rebuild redirect url
-        $newQueryString = http_build_query($query);
-        (new UnicodeString($targetUrl))->before('?')->append('?' . $newQueryString);
-
-        $output->writeln('Please visit ' . $redirectResponse->getTargetUrl()
+        $output->writeln('Please visit ' . $targetUrl
             . ' to grant permissions to read your library of liked tracks.');
     }
 }
