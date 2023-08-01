@@ -30,6 +30,7 @@ class AuthorizeUserCommand extends Command
     }
 
     /**
+     * TODO: create test when I'm sure nothing will change to this
      * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
