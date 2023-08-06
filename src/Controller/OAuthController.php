@@ -41,7 +41,7 @@ class OAuthController extends AbstractController
                 ]);
 
 
-            $user = $client->fetchUser();
+            //$user = $client->fetchUser();
 
             $cache = new FilesystemAdapter();
             // encrypt the access token using the secrets service
@@ -49,12 +49,12 @@ class OAuthController extends AbstractController
 
             // do something with all this new power!
             // e.g. $name = $user->getFirstName();
-            dd($user);
+            //dd($user);
             // ...
         } catch (IdentityProviderException $e) {
             // something went wrong!
             // probably you should return the reason to the user
-            dd($e->getMessage());
+            throw $e;
         } catch (\Exception $e) {
         }
     }

@@ -12,6 +12,6 @@ knpu_oauth2_client:
             client_secret: '%env(OAUTH_SPOTIFY_CLIENT_SECRET)%'
             # a route name you'll create
             redirect_route: connect.spotify.check
-            redirect_params: {  }
+            redirect_params: { }
             # whether to check OAuth2 "state": defaults to true
             use_state: false
